@@ -53,4 +53,8 @@ app.get("/webhook", (req, res) => {
     res.sendStatus(403);
   }
 });
+app.get("/", (req, res) => {
+  res.send("🤖 DDS BOT is running!");
+});
+
 
