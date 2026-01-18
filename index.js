@@ -41,7 +41,7 @@ app.post("/webhook", async (req, res) => {
 
 app.listen(3000, () => console.log("BOT RUNNING"));
 app.get("/webhook", (req, res) => {
-  const VERIFY_TOKEN = "dds_bot ";
+  const VERIFY_TOKEN = "dds_bot2026";
 
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
