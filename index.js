@@ -9,7 +9,9 @@ const PAGE_TOKEN = process.env.PAGE_TOKEN;
 const OPENAI_KEY = process.env.OPENAI_KEY;
 const VERIFY_TOKEN = "dds_bot2026"; // Meta дээр бичсэнтэй яг адил
 
-// 👉 WEBHOOK VERIFY
+// =================================================
+// 👉 WEBHOOK VERIFY (FACEBOOK CALLBACK CHECK)
+// =================================================
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -24,13 +26,26 @@ app.get("/webhook", (req, res) => {
   }
 });
 
+// =================================================
 // 👉 MESSAGE RECEIVE
+// =================================================
 app.post("/webhook", async (req, res) => {
   try {
-    let msg = req.body.entry[0].messaging[0];
-    let text = msg.message.text;
-    let user = msg.sender.id;
+    const entry = req.body.entry?.[0];
+    const messaging = entry?.messaging?.[0];
 
+    // 🔒 Message биш эвент бол алгасна
+    if (!messaging || !messaging.message || !messaging.message.text) {
+      console.log("⚠️ Non-message event received");
+      return res.sendStatus(200);
+    }
+
+    const text = messaging.message.text;
+    const user = messaging.sender.id;
+
+    console.log("📩 Incoming:", text);
+
+    // 👉 OPENAI
     const gpt = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
@@ -39,13 +54,15 @@ app.post("/webhook", async (req, res) => {
       },
       {
         headers: {
-          Authorization: `Bearer ${OPENAI_KEY}`
+          Authorization: `Bearer ${OPENAI_KEY}`,
+          "Content-Type": "application/json"
         }
       }
     );
 
-    let reply = gpt.data.choices[0].message.content;
+    const reply = gpt.data.choices[0].message.content;
 
+    // 👉 SEND BACK TO FACEBOOK
     await axios.post(
       `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_TOKEN}`,
       {
@@ -54,18 +71,24 @@ app.post("/webhook", async (req, res) => {
       }
     );
 
+    console.log("✅ Replied:", reply);
+
     res.sendStatus(200);
   } catch (err) {
-    console.log(err);
+    console.error("❌ ERROR:", err.response?.data || err.message);
     res.sendStatus(500);
   }
 });
 
+// =================================================
 // ROOT
+// =================================================
 app.get("/", (req, res) => {
   res.send("🤖 DDS BOT is running!");
 });
 
-// 👉 RENDER PORT FIX
+// =================================================
+// RENDER PORT FIX
+// =================================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("🚀 BOT RUNNING ON", PORT));
